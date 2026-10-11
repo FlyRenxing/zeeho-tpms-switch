@@ -1,0 +1,89 @@
+/**
+ * ZEEHO / 极核：在 vehicleSet/itemsV2 响应里注入 TIRE_MONITORING，
+ * 让车辆设置出现「胎压传感器」入口。
+ *
+ * 只改这个显示开关。不 mock 胎压读数、预警范围、首页或 carSet。
+ *
+ * 兼容 Stash / Loon / Surge（$response + $done）。
+ */
+
+function hasCode(list, code) {
+  if (!Array.isArray(list)) return false;
+  for (var i = 0; i < list.length; i++) {
+    if (list[i] && list[i].functionCode === code) return true;
+  }
+  return false;
+}
+
+function injectTireMonitoring(body) {
+  if (!body || typeof body !== "object" || !body.data) return body;
+
+  var data = body.data;
+
+  if (Array.isArray(data.vehicleTypeDetailFunctionVOList) && !hasCode(data.vehicleTypeDetailFunctionVOList, "TIRE_MONITORING")) {
+    data.vehicleTypeDetailFunctionVOList.unshift({
+      functionCode: "TIRE_MONITORING",
+      sortNum: 1,
+      isSupport: true,
+      isSupportSetting: true,
+      isSupportBlueTooth: false
+    });
+  }
+
+  var item = {
+    functionCode: "TIRE_MONITORING",
+    functionIconUrl: null,
+    functionName: "胎压传感器",
+    describe: null,
+    subFunctions: [],
+    type: 1
+  };
+
+  if (Array.isArray(data.vehicleSetFunctionVOList)) {
+    if (data.vehicleSetFunctionVOList.length === 0) {
+      data.vehicleSetFunctionVOList.push([item]);
+    } else {
+      var first = data.vehicleSetFunctionVOList[0];
+      if (Array.isArray(first) && !hasCode(first, "TIRE_MONITORING")) {
+        first.unshift(item);
+      }
+    }
+  }
+
+  return body;
+}
+
+function parseBody(raw) {
+  if (raw == null) return null;
+  if (typeof raw === "object") return raw;
+  if (typeof raw !== "string") return null;
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+function rewriteBody(raw) {
+  var parsed = parseBody(raw);
+  if (!parsed) return null;
+  return JSON.stringify(injectTireMonitoring(parsed));
+}
+
+if (typeof $done === "function" && typeof $response !== "undefined") {
+  var next = rewriteBody($response.body);
+  if (next == null) {
+    $done({});
+  } else {
+    $done({ body: next });
+  }
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    hasCode: hasCode,
+    injectTireMonitoring: injectTireMonitoring,
+    parseBody: parseBody,
+    rewriteBody: rewriteBody
+  };
+}

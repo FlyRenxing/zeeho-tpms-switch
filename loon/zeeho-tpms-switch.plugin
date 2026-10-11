@@ -1,0 +1,13 @@
+#!name = ZEEHO 胎压设置开关
+#!desc = 向 vehicleSet/itemsV2 注入 TIRE_MONITORING，让极核 App 车辆设置出现「胎压传感器」入口。只改显示开关，不 mock 胎压数据。
+#!author = FlyRenxing
+#!homepage = https://github.com/FlyRenxing/zeeho-tpms-switch
+#!date = 2026-10-12
+#!tag = ZEEHO,极核,Rewrite
+#!system = iOS,iPadOS,macOS
+
+[Script]
+response if ${url} ~= /^https:\/\/tapi\.zeehoev\.com\/v1\.0\/app\/cfmotoserverapp\/vehicleSet\/itemsV2/ then script("https://raw.githubusercontent.com/FlyRenxing/zeeho-tpms-switch/main/scripts/zeeho-tpms-switch.js") with requires_body=true, timeout=10, tag="ZEEHO 胎压设置"
+
+[Mitm]
+hostname = tapi.zeehoev.com
