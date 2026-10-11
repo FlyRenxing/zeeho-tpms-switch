@@ -1,5 +1,5 @@
 /**
- * ZEEHO / 极核：在 vehicleSet/itemsV2 响应里注入 TIRE_MONITORING，
+ * ZEEHO / 极核：在 vehicleSet/items、itemsV2 响应里注入 TIRE_MONITORING，
  * 让车辆设置出现「胎压传感器」入口。
  *
  * 只改这个显示开关。不 mock 胎压读数、预警范围、首页或 carSet。
@@ -15,22 +15,18 @@ function hasCode(list, code) {
   return false;
 }
 
-function injectTireMonitoring(body) {
-  if (!body || typeof body !== "object" || !body.data) return body;
+function capabilityItem() {
+  return {
+    functionCode: "TIRE_MONITORING",
+    sortNum: 1,
+    isSupport: true,
+    isSupportSetting: true,
+    isSupportBlueTooth: false
+  };
+}
 
-  var data = body.data;
-
-  if (Array.isArray(data.vehicleTypeDetailFunctionVOList) && !hasCode(data.vehicleTypeDetailFunctionVOList, "TIRE_MONITORING")) {
-    data.vehicleTypeDetailFunctionVOList.unshift({
-      functionCode: "TIRE_MONITORING",
-      sortNum: 1,
-      isSupport: true,
-      isSupportSetting: true,
-      isSupportBlueTooth: false
-    });
-  }
-
-  var item = {
+function settingsItem() {
+  return {
     functionCode: "TIRE_MONITORING",
     functionIconUrl: null,
     functionName: "胎压传感器",
@@ -38,8 +34,30 @@ function injectTireMonitoring(body) {
     subFunctions: [],
     type: 1
   };
+}
+
+function injectTireMonitoring(body) {
+  if (!body || typeof body !== "object") return body;
+
+  // vehicleSet/items：data 是功能数组
+  if (Array.isArray(body.data)) {
+    if (!hasCode(body.data, "TIRE_MONITORING")) {
+      body.data.unshift(capabilityItem());
+    }
+    return body;
+  }
+
+  if (!body.data) return body;
+
+  var data = body.data;
+
+  // vehicleSet/itemsV2：能力列表 + 设置宫格
+  if (Array.isArray(data.vehicleTypeDetailFunctionVOList) && !hasCode(data.vehicleTypeDetailFunctionVOList, "TIRE_MONITORING")) {
+    data.vehicleTypeDetailFunctionVOList.unshift(capabilityItem());
+  }
 
   if (Array.isArray(data.vehicleSetFunctionVOList)) {
+    var item = settingsItem();
     if (data.vehicleSetFunctionVOList.length === 0) {
       data.vehicleSetFunctionVOList.push([item]);
     } else {
@@ -72,6 +90,9 @@ function rewriteBody(raw) {
 
 if (typeof $done === "function" && typeof $response !== "undefined") {
   var next = rewriteBody($response.body);
+  if (typeof console !== "undefined" && console.log) {
+    console.log("[ZEEHO TPMS] " + ((typeof $request !== "undefined" && $request.url) || "") + (next ? " rewritten" : " skipped"));
+  }
   if (next == null) {
     $done({});
   } else {
